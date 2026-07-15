@@ -74,7 +74,7 @@ app.get("/products", async (req: Request, res: Response) => {
     }
 
     const currentPage = Number(page) || 1;
-    const currentLimit = Number(limit) || 8; 
+    const currentLimit = Number(limit) || 8;
     const skip = (currentPage - 1) * currentLimit;
 
     const products = await productsCollection
@@ -101,7 +101,23 @@ app.get("/products", async (req: Request, res: Response) => {
   }
 });
 
-// 2. GET /products/my-items (MUST BE PLACED BEFORE /products/:id)
+// 2. GET /products/latest (Home page latest 4 gadgets)
+app.get("/products/latest", async (req: Request, res: Response) => {
+  try {
+    const latestProducts = await productsCollection
+      .find()
+      .sort({ createdAt: -1 })
+      .limit(4)
+      .toArray(); 
+
+    return res.status(200).json(latestProducts);
+  } catch (error) {
+    console.error("Error fetching latest additions:", error);
+    return res.status(500).json({ message: "Failed to fetch latest additions" });
+  }
+});
+
+// 3. GET /products/my-items
 app.get("/products/my-items", async (req: Request, res: Response) => {
   try {
     const { email } = req.query;
@@ -119,7 +135,7 @@ app.get("/products/my-items", async (req: Request, res: Response) => {
   }
 });
 
-// 3. GET /products/:id (Get single product details)
+// 4. GET /products/:id (Get single product details)
 app.get("/products/:id", async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -140,7 +156,7 @@ app.get("/products/:id", async (req: Request, res: Response) => {
   }
 });
 
-// 4. POST /products (Add a new gadget)
+// 5. POST /products (Add a new gadget)
 app.post("/products", async (req: Request, res: Response) => {
   try {
     const { title, description, price, category, image, condition, sellerEmail } = req.body;
@@ -170,7 +186,7 @@ app.post("/products", async (req: Request, res: Response) => {
   }
 });
 
-// 5. DELETE /products/:id (Delete a listed item)
+// 6. DELETE /products/:id (Delete a listed item)
 app.delete("/products/:id", async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
