@@ -8,11 +8,9 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Middleware
 app.use(cors());
 app.use(express.json());
 
-// MongoDB Connection URI
 const uri = process.env.MONGO_URI as string;
 const client = new MongoClient(uri);
 
@@ -52,22 +50,18 @@ app.get("/products", async (req: Request, res: Response) => {
     const { search, category, maxPrice, sortBy, page, limit } = req.query;
     let query: any = {};
 
-    // Title Search Logic
     if (search && typeof search === "string") {
       query.title = { $regex: search, $options: "i" };
     }
 
-    // Category Filter
     if (category && typeof category === "string") {
       query.category = category;
     }
 
-    // Max Price Filter
     if (maxPrice) {
       query.price = { $lte: Number(maxPrice) };
     }
 
-    // Sorting Logic (Default: Latest Additions)
     let sortOptions: any = { createdAt: -1 };
     if (sortBy && typeof sortBy === "string") {
       if (sortBy === "priceLowHigh") {
@@ -79,19 +73,17 @@ app.get("/products", async (req: Request, res: Response) => {
       }
     }
 
-    // Pagination Logic
     const currentPage = Number(page) || 1;
     const currentLimit = Number(limit) || 8; 
     const skip = (currentPage - 1) * currentLimit;
 
     const products = await productsCollection
       .find(query)
-      .sort({createdAt: -1})
+      .sort(sortOptions)
       .skip(skip)
       .limit(currentLimit)
       .toArray();
 
-    //  Total count calculation for frontend pagination buttons
     const totalItems = await productsCollection.countDocuments(query);
     const totalPages = Math.ceil(totalItems / currentLimit);
 
@@ -109,7 +101,25 @@ app.get("/products", async (req: Request, res: Response) => {
   }
 });
 
-// 2. GET /products/:id (Get single product details)
+// 2. GET /products/my-items (MUST BE PLACED BEFORE /products/:id)
+app.get("/products/my-items", async (req: Request, res: Response) => {
+  try {
+    const { email } = req.query;
+
+    if (!email || typeof email !== "string") {
+      return res.status(400).json({
+        message: "A valid seller email is required as a query parameter"
+      });
+    }
+
+    const myProducts = await productsCollection.find({ sellerEmail: email }).toArray();
+    res.status(200).json(myProducts);
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching user inventory", error });
+  }
+});
+
+// 3. GET /products/:id (Get single product details)
 app.get("/products/:id", async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -130,12 +140,11 @@ app.get("/products/:id", async (req: Request, res: Response) => {
   }
 });
 
-// 3. POST /products (Add a new gadget)
+// 4. POST /products (Add a new gadget)
 app.post("/products", async (req: Request, res: Response) => {
   try {
     const { title, description, price, category, image, condition, sellerEmail } = req.body;
 
-    // validation
     if (!title || !price || !category || !image || !condition || !sellerEmail) {
       return res.status(400).json({ message: "Missing required product fields" });
     }
@@ -161,24 +170,6 @@ app.post("/products", async (req: Request, res: Response) => {
   }
 });
 
-// 4. GET /products/my-items (Fetch dynamic items managed by specific user)
-app.get("/products/my-items", async (req: Request, res: Response) => {
-  try {
-    const { email } = req.query;
-
-    if (!email || typeof email !== "string") {
-      return res.status(400).json({
-        message: "A valid seller email is required as a query parameter"
-      });
-    }
-
-    const myProducts = await productsCollection.find({ sellerEmail: email }).toArray();
-    res.status(200).json(myProducts);
-  } catch (error) {
-    res.status(500).json({ message: "Error fetching user inventory", error });
-  }
-});
-
 // 5. DELETE /products/:id (Delete a listed item)
 app.delete("/products/:id", async (req: Request, res: Response) => {
   try {
@@ -200,7 +191,6 @@ app.delete("/products/:id", async (req: Request, res: Response) => {
   }
 });
 
-// Start Server
 app.listen(PORT, () => {
   console.log(`Backend Running on port ${PORT}`);
 });
