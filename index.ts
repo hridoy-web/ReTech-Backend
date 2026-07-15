@@ -34,7 +34,7 @@ interface Product {
 async function connectDB() {
   try {
     await client.connect();
-    db = client.db("retech_db");
+    db = client.db("ReTechDB");
     productsCollection = db.collection<Product>("products");
     console.log("Connected MongoDB Successfully!");
   } catch (error) {
@@ -86,7 +86,7 @@ app.get("/products", async (req: Request, res: Response) => {
 
     const products = await productsCollection
       .find(query)
-      .sort(sortOptions)
+      .sort({createdAt: -1})
       .skip(skip)
       .limit(currentLimit)
       .toArray();
